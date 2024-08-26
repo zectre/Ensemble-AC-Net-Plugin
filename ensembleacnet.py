@@ -32,6 +32,7 @@ from qgis.PyQt.QtWidgets import QAction
 from PyQt5.QtWidgets import QPushButton
 from tensorflow.keras.models import load_model
 from qgis.utils import iface
+from osgeo import gdal
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -43,6 +44,8 @@ from .scripts.processing import *
 from .scripts.splitfile import *
 import rasterio
 from rasterio.merge import merge
+import os
+import numpy as np
 
 
 
@@ -80,6 +83,7 @@ class ensembleacnet:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
+        
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -215,6 +219,7 @@ class ensembleacnet:
         # See if OK was pressed
         if result:
             # Get the currently selected map layer from the mMapLayerComboBox
+            # Get the current directory
             TOA = self.dlg.mMapLayerComboBox.currentLayer()
             TOA_file_path = TOA.source()
             
@@ -226,6 +231,9 @@ class ensembleacnet:
             
             WV = self.dlg.mMapLayerComboBox_4.currentLayer()
             WV_file_path = WV.source()
+            
+            shp = self.dlg.mMapLayerComboBox_5.currentLayer()
+            shp_file_path = shp.source()
 
             # If a layer is selected, print its file path
             if TOA is not None:
@@ -234,9 +242,10 @@ class ensembleacnet:
             print("wewww")
             # List of raster files
             raster_files = [TOA_file_path, Angle_file_path, AOT_file_path, WV_file_path]
+            current_dir = os.path.dirname(__file__)
 
             # Output file
-            output_file = r"C:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\Merged.tif"
+            output_file = os.path.join(current_dir, "Merged.tif")
 
             # Create a virtual raster from the input raster files
             vrt = gdal.BuildVRT("temp.vrt", raster_files, separate=True)
@@ -252,28 +261,73 @@ class ensembleacnet:
             
             data_img, n_bands, n_row, n_col = load_data(output_file)
             patches_4D, n_patch = extract_patches(n_bands, n_row, n_col, data_img)
-            path_save = r'C:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\patches.npy'
+            path_save = os.path.join(current_dir, "patches.npy")
             patch = save_patch(path_save, patches_4D)
 
             input_path = patch
             output_paths = [
-                r'C:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\TOA.npy',
-                r'C:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\Ang.npy',
-                r'C:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\AOT.npy',
-                r'C:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\WV.npy'
+                os.path.join(current_dir, "TOA.npy"),
+                os.path.join(current_dir, "Ang.npy"),
+                os.path.join(current_dir, "AOT.npy"),
+                os.path.join(current_dir, "WV.npy")
             ]
             split_and_save_data(input_path, output_paths)
             
             TOA_xtest, angles_xtest, AOT_xtest, WV_xtest = load_predictdata()
-            model = load_model(r'c:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\ACNetmodelHypermodeltesDATASETNEWest.h5')
-            y_prediction = model.predict([TOA_xtest, angles_xtest, AOT_xtest, WV_xtest])  # prediction from x_test using model above
-            test_paths = r'e:\RESEARCH\dataset2\processing di PC\testing\rodeplate\timeseries\2018\10\output\forNN\acnet.npy'
+            
+            
+            model1 = load_model(os.path.join(current_dir, "model", "HypermodelSubset1.h5"))
+            y_prediction1 = model1.predict([TOA_xtest, angles_xtest, AOT_xtest, WV_xtest])  # prediction from x_test using model above
+            
+            model2 = load_model(os.path.join(current_dir, "model", "HypermodelSubset2.h5"))
+            y_prediction2 = model2.predict([TOA_xtest, angles_xtest, AOT_xtest, WV_xtest])  # prediction from x_test using model above
+            
+            model3 = load_model(os.path.join(current_dir, "model", "HypermodelSubset3.h5"))
+            y_prediction3 = model3.predict([TOA_xtest, angles_xtest, AOT_xtest, WV_xtest])  # prediction from x_test using model above
+            
+            model4 = load_model(os.path.join(current_dir, "model", "HypermodelSubset4.h5"))
+            y_prediction4 = model4.predict([TOA_xtest, angles_xtest, AOT_xtest, WV_xtest])
+            
+            model5 = load_model(os.path.join(current_dir, "model", "HypermodelSubset5.h5"))
+            y_prediction5 = model5.predict([TOA_xtest, angles_xtest, AOT_xtest, WV_xtest])
+            
+            model6 = load_model(os.path.join(current_dir, "model", "HypermodelSubset6.h5"))
+            y_prediction6 = model6.predict([TOA_xtest, angles_xtest, AOT_xtest, WV_xtest])
+            
+            w1 = 0.15959
+            w2 = 0.16813
+            w3 = 0.17110
+            w4 = 0.16548
+            w5 = 0.17123
+            w6 = 0.16447
+            
+            final_prediction = w1 * y_prediction1 + w2 * y_prediction2 + w3 * y_prediction3 + w4 * y_prediction4  + w5 * y_prediction5 + w6 * y_prediction6 
+            
+            # Save the array to a .npy file
+            test_paths = os.path.join(current_dir, "acnet.npy")
+            np.save(test_paths, final_prediction)
+            
             img_path = TOA_file_path
-            output_path = r'C:\Users\Yoga\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\ensembleacnet\acnetweqweq.tif'
-            reshape_and_save_prediction(test_paths, img_path, output_path)
+            output_path = self.dlg.mQgsFileWidget.filePath() + ".tif"
+            reshape_and_save_prediction(test_paths, img_path, output_path, n_row, n_col)
+            # path to your shapefile
+            shapefile_path = shp_file_path
+
+            # clip the raster
+            output_path_clipped = output_path.replace('.tif', '_clipped.tif')
+            ds = gdal.Warp(output_path_clipped, output_path, cutlineDSName=shapefile_path, cropToCutline=True)
+            ds = None 
+
+            # load the clipped output file into QGIS
+            iface.addRasterLayer(output_path_clipped, "Clipped Output Layer")
             
-            # load the output file into QGIS
-            iface.addRasterLayer(output_path, "Output Layer")
-            
+            # List of files to delete
+            files_to_delete = ['AOT.npy', 'acnet.npy', 'TOA.npy', 'Ang.npy', 'WV.npy', 'patches.npy', 'Merged.tif']
+
+            # Delete the files
+            for filename in files_to_delete:
+                os.remove(os.path.join(current_dir, filename))
+      
+
             # Do something useful here - delete the line containing pass and
             pass

@@ -3,10 +3,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Conv3D, Activation, BatchNormalization, Dense, Dropout,Flatten, Reshape
-from tensorflow.keras.layers import Concatenate
-from tensorflow.keras.regularizers import l2
 from matplotlib import pyplot as plt   
 import h5py 
 
@@ -36,7 +32,7 @@ from numpy import load, save, concatenate
 import pandas as pd
 from osgeo import gdal
 import rasterio as rio
-def reshape_and_save_prediction(test_paths, img_path, output_path):
+def reshape_and_save_prediction(test_paths, img_path, output_path, n_row, n_col):
     # Load the prediction data
     y_prediction = np.load(test_paths)
     pred_B1 = y_prediction[:, 0]
@@ -46,11 +42,11 @@ def reshape_and_save_prediction(test_paths, img_path, output_path):
     pred_B5 = y_prediction[:, 4]
 
     # Reshape the prediction data
-    pred_B1_2d = np.reshape(pred_B1, (130, 167), order='C')
-    pred_B2_2d = np.reshape(pred_B2, (130, 167), order='C')
-    pred_B3_2d = np.reshape(pred_B3, (130, 167), order='C')
-    pred_B4_2d = np.reshape(pred_B4, (130, 167), order='C')
-    pred_B5_2d = np.reshape(pred_B5, (130, 167), order='C')
+    pred_B1_2d = np.reshape(pred_B1, (n_row-2, n_col-2), order='C')
+    pred_B2_2d = np.reshape(pred_B2, (n_row-2, n_col-2), order='C')
+    pred_B3_2d = np.reshape(pred_B3, (n_row-2, n_col-2), order='C')
+    pred_B4_2d = np.reshape(pred_B4, (n_row-2, n_col-2), order='C')
+    pred_B5_2d = np.reshape(pred_B5, (n_row-2, n_col-2), order='C')
 
     filelist2 = np.concatenate((pred_B1_2d, pred_B2_2d, pred_B3_2d, pred_B4_2d, pred_B5_2d), axis=0)
     filelist_reshape2 = filelist2.reshape(5, pred_B1_2d.shape[0], pred_B1_2d.shape[1]).astype('float32')
